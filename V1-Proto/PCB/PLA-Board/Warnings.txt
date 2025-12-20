@@ -1,0 +1,9 @@
+Warning: No net found for symbol U18 pin 5. VDC
+Warning: No net found for symbol U18 pin 6.
+
+Warning: No net found for symbol U20 pin 7.
+Warning: No net found for symbol U20 pin 14.
+Warning: No net found for symbol U20 pin 28.
+
+Warning: No net found for symbol U23 pin 18.
+Warning: No net found for symbol U23 pin 32.
