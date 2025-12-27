@@ -125,9 +125,18 @@ begin
 	ma(17 downto 10) <= std_logic_vector(unsigned("00" & a(15 downto 10)) + unsigned(active_offset));
 	ma(19 downto 18) <= "11"; -- unused address lines for larger ROMs
 	 
-	process(phi2)
+	process(phi2, resetb)
 	begin
-		if falling_edge(phi2) then
+		if resetb = '0' then
+			-- reset all MMU registers to default state
+			mmu_kern_offset <= (others => '0');
+			mmu_appl1_offset <= (others => '0');
+			mmu_appl2_offset <= (others => '0');
+			mmu_appl3_offset <= (others => '0');
+			mmu_appl4_offset <= (others => '0');
+			mmu_mode <= MODE_KERN;
+			mmu_saved_mode <= MODE_KERN;
+		elsif falling_edge(phi2) then
 			if rwb = '0' then
 				case a(15 downto 7) is  -- 9 bits: page + upper/lower half
 					when x"FF" & '0' => mmu_kern_offset <= d;   -- FF00-FF7F
@@ -143,7 +152,7 @@ begin
 					when x"FB" & '0' => mmu_mode <= MODE_RAM;   -- FB00-FB7F
 					when x"FA" & '1' => mmu_mode <= MODE_APPL;  -- FA80-FAFF
 					when x"FA" & '0' => mmu_mode <= MODE_KERN;  -- FA00-FA7F
-						 
+
 					when others => null;
 				end case;
 			end if;
