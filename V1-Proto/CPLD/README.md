@@ -49,8 +49,13 @@ The MMU provides address translation for the 65C102 CPU to access up to 256K of 
 |-------------------|-----------------|
 | `$F800`-`$F80F`   | VIA #1          |
 | `$F880`-`$F88F`   | VIA #2          |
-| `$F900`-`$F901`   | VDC (LCD)       |
 | `$F980`-`$F983`   | ACIA            |
+
+## VDC (LCD Controller) Registers
+
+| Address Range     | Device          |
+|-------------------|-----------------|
+| `$FF80`-`$FF83`   | VDC (LCD)       |
 
 ## MMU Control Registers (Write Only)
 

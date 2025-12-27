@@ -64,7 +64,7 @@ begin
 			  
 	via2 <= '1' when a(15 downto 4) = x"F88" else '0';
 
-	vdc  <= '1' when a(15 downto 4) = x"F90" and a(3 downto 1) = "000" else '0';
+	vdc  <= '1' when a(15 downto 7) = "111111111" and a(6 downto 2) = "00000" else '0';  -- $FF80-$FF83
 
 	acia <= '1' when a(15 downto 4) = x"F98" and a(3 downto 2) = "00" else '0';
 	

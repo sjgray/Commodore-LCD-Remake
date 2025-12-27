@@ -24,7 +24,7 @@ constant MMU_MODE_SAVE   : std_logic_vector(15 downto 0) := x"FC00";
 -- I/O addresses
 constant VIA1_BASE : std_logic_vector(15 downto 0) := x"F800";
 constant VIA2_BASE : std_logic_vector(15 downto 0) := x"F880";
-constant VDC_BASE  : std_logic_vector(15 downto 0) := x"F900";
+constant VDC_BASE  : std_logic_vector(15 downto 0) := x"FF80";
 constant ACIA_BASE : std_logic_vector(15 downto 0) := x"F980";
 
 -- Signals matching decoder ports
@@ -166,9 +166,9 @@ begin
 		cpuRead(VIA2_BASE);
 		assert cs_via2b = '0' report "VIA2 CS should be active at $F880" severity error;
 
-		-- VDC ($F900-$F901)
+		-- VDC ($FF80-$FF83)
 		cpuRead(VDC_BASE);
-		assert cs_vdcb = '0' report "VDC CS should be active at $F900" severity error;
+		assert cs_vdcb = '0' report "VDC CS should be active at $FF80" severity error;
 
 		-- ACIA ($F980-$F983)
 		cpuRead(ACIA_BASE);
