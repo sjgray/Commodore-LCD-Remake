@@ -36,8 +36,6 @@ architecture rtl of decoder is
 
 	signal vram : std_logic;
 	signal ram1 : std_logic;
-	signal f8xx : std_logic;
-	signal f9xx : std_logic;
 	signal via1 : std_logic;
 	signal via2 : std_logic;
 	signal vdc : std_logic;
@@ -52,10 +50,10 @@ architecture rtl of decoder is
 	signal mmu_appl2_offset: std_logic_vector(7 downto 0);
 	signal mmu_appl1_offset: std_logic_vector(7 downto 0);
 	signal mmu_mode: mmu_mode_t;
-	signal window_select: std_logic_vector(1 downto 0);
+	signal mmu_saved_mode: mmu_mode_t;
 	signal active_offset: std_logic_vector(7 downto 0);
-   signal is_bottom_4k : std_logic;  -- $0000-$0FFF: system RAM
-   signal is_io_rom : std_logic;     -- $F800-$FFFF: I/O and ROM
+	signal is_bottom_4k : std_logic;  -- $0000-$0FFF: system RAM
+	signal is_io_rom : std_logic;     -- $F800-$FFFF: I/O and ROM
 
 begin
 
@@ -133,15 +131,16 @@ begin
 			if rwb = '0' then
 				case a(15 downto 7) is  -- 9 bits: page + upper/lower half
 					when x"FF" & '0' => mmu_kern_offset <= d;   -- FF00-FF7F
-					when x"FE" & '1' => mmu_appl3_offset <= d;  -- FE80-FEFF
-					when x"FE" & '0' => mmu_appl2_offset <= d;  -- FE00-FE7F
-					when x"FD" & '1' => mmu_appl1_offset <= d;  -- FD80-FDFF
-					when x"FD" & '0' => null;                   -- FD00-FD7F: TEST MODE
-					when x"FC" & '1' => null;                   -- FC80-FCFF: SAVE/RECALL
-					 
+					when x"FE" & '1' => mmu_appl4_offset <= d;  -- FE80-FEFF
+					when x"FE" & '0' => mmu_appl3_offset <= d;  -- FE00-FE7F
+					when x"FD" & '1' => mmu_appl2_offset <= d;  -- FD80-FDFF
+					when x"FD" & '0' => mmu_appl1_offset <= d;  -- FD00-FD7F
+					when x"FC" & '1' => null;                   -- FC80-FCFF: TEST MODE (not implemented)
+					when x"FC" & '0' => mmu_saved_mode <= mmu_mode;  -- FC00-FC7F: SAVE
+
 					-- mode switching (only address matters, data ignored)
-					when x"FB" & '1' => mmu_mode <= MODE_RAM;   -- FB80-FBFF
-					when x"FB" & '0' => mmu_mode <= MODE_APPL;  -- FB00-FB7F
+					when x"FB" & '1' => mmu_mode <= mmu_saved_mode;  -- FB80-FBFF: RECALL
+					when x"FB" & '0' => mmu_mode <= MODE_RAM;   -- FB00-FB7F
 					when x"FA" & '1' => mmu_mode <= MODE_APPL;  -- FA80-FAFF
 					when x"FA" & '0' => mmu_mode <= MODE_KERN;  -- FA00-FA7F
 						 

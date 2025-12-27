@@ -15,9 +15,11 @@ constant MMU_APPL2_OFFSET : std_logic_vector(15 downto 0) := x"FD80";
 constant MMU_APPL1_OFFSET : std_logic_vector(15 downto 0) := x"FD00";
 
 -- Mode switching addresses
-constant MMU_MODE_KERN : std_logic_vector(15 downto 0) := x"FA00";
-constant MMU_MODE_APPL : std_logic_vector(15 downto 0) := x"FB00";
-constant MMU_MODE_RAM  : std_logic_vector(15 downto 0) := x"FB80";
+constant MMU_MODE_KERN   : std_logic_vector(15 downto 0) := x"FA00";
+constant MMU_MODE_APPL   : std_logic_vector(15 downto 0) := x"FA80";
+constant MMU_MODE_RAM    : std_logic_vector(15 downto 0) := x"FB00";
+constant MMU_MODE_RECALL : std_logic_vector(15 downto 0) := x"FB80";
+constant MMU_MODE_SAVE   : std_logic_vector(15 downto 0) := x"FC00";
 
 -- I/O addresses
 constant VIA1_BASE : std_logic_vector(15 downto 0) := x"F800";
@@ -139,17 +141,20 @@ begin
 		-- VRAM ($0000-$3FFF)
 		cpuRead(x"0000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert cs_vramb = '0' report "VRAM CS should be active at $0000" severity error;
 		wait until phi2 = '0';
 
 		cpuRead(x"3FFF");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert cs_vramb = '0' report "VRAM CS should be active at $3FFF" severity error;
 		wait until phi2 = '0';
 
 		-- RAM1 ($4000-$7FFF)
 		cpuRead(x"4000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert cs_ram1b = '0' report "RAM1 CS should be active at $4000" severity error;
 		wait until phi2 = '0';
 
@@ -181,6 +186,7 @@ begin
 		-- Kernel window ($4000-$7FFF): a(15:10)=010000 + $10 = $20
 		cpuRead(x"4000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"20"
 			report "KERN: $4000 + offset $10 -> ma should be $20, got " &
 				   integer'image(to_integer(unsigned(ma(17 downto 10))))
@@ -190,6 +196,7 @@ begin
 		-- Test another address in kernel window
 		cpuRead(x"5000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		-- a(15:10) = 010100 (20), + $10 = $24
 		assert ma(17 downto 10) = x"24"
 			report "KERN: $5000 + offset $10 -> ma should be $24"
@@ -211,6 +218,7 @@ begin
 		-- Window 1: $1000, a(15:10)=000100 (4), + $10 = $14
 		cpuRead(x"1000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"14"
 			report "APPL W1: $1000 + offset $10 -> ma should be $14"
 			severity error;
@@ -219,6 +227,7 @@ begin
 		-- Window 2: $4000, a(15:10)=010000 (16), + $20 = $30
 		cpuRead(x"4000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"30"
 			report "APPL W2: $4000 + offset $20 -> ma should be $30"
 			severity error;
@@ -227,6 +236,7 @@ begin
 		-- Window 3: $8000, a(15:10)=100000 (32), + $30 = $50
 		cpuRead(x"8000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"50"
 			report "APPL W3: $8000 + offset $30 -> ma should be $50"
 			severity error;
@@ -235,6 +245,7 @@ begin
 		-- Window 4: $C000, a(15:10)=110000 (48), + $40 = $70
 		cpuRead(x"C000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"70"
 			report "APPL W4: $C000 + offset $40 -> ma should be $70"
 			severity error;
@@ -250,6 +261,7 @@ begin
 		-- $4000: a(15:10)=010000 (16), no offset = $10
 		cpuRead(x"4000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"10"
 			report "RAM: $4000 -> ma should be $10 (no offset)"
 			severity error;
@@ -258,6 +270,7 @@ begin
 		-- $8000: a(15:10)=100000 (32), no offset = $20
 		cpuRead(x"8000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"20"
 			report "RAM: $8000 -> ma should be $20 (no offset)"
 			severity error;
@@ -274,6 +287,7 @@ begin
 
 		cpuRead(x"0000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"00"
 			report "Bottom 4K: $0000 should always map to ma=$00"
 			severity error;
@@ -281,6 +295,7 @@ begin
 
 		cpuRead(x"0800");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		-- a(15:10) = 000010 (2), no offset = $02
 		assert ma(17 downto 10) = x"02"
 			report "Bottom 4K: $0800 should map to ma=$02"
@@ -294,13 +309,20 @@ begin
 
 		cpuRead(x"E000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert cs_rom1b = '0' report "ROM CS should be active on read" severity error;
 		wait until phi2 = '0';
 
-		cpuWrite(x"E000", x"00");
+		-- Check ROM CS during write (need to check while rwb='0')
 		wait until phi2 = '1';
+		rwb <= '0';
+		a <= x"E000";
+		d <= x"00";
+		wait for 100 ns;
 		assert cs_rom1b = '1' report "ROM CS should be inactive on write" severity error;
 		wait until phi2 = '0';
+		rwb <= '1';
+		d <= (others => '0');
 
 		-----------------------------------------------
 		-- Test 7: Mode switching persistence
@@ -314,6 +336,7 @@ begin
 		cpuWrite(MMU_MODE_KERN, x"00");
 		cpuRead(x"4000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"15"
 			report "After KERN switch: $4000 + $05 -> $15"
 			severity error;
@@ -323,8 +346,50 @@ begin
 		cpuWrite(MMU_MODE_APPL, x"00");
 		cpuRead(x"4000");
 		wait until phi2 = '1';
+		wait for 100 ns;
 		assert ma(17 downto 10) = x"1A"
 			report "After APPL switch: $4000 + $0A -> $1A"
+			severity error;
+		wait until phi2 = '0';
+
+		-----------------------------------------------
+		-- Test 8: SAVE/RECALL mode
+		-----------------------------------------------
+		report "Test 8: SAVE/RECALL mode";
+
+		-- Start in KERN mode with offset $05
+		cpuWrite(MMU_KERN_OFFSET, x"05");
+		cpuWrite(MMU_MODE_KERN, x"00");
+
+		-- Verify we're in KERN mode
+		cpuRead(x"4000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert ma(17 downto 10) = x"15"
+			report "SAVE/RECALL: Initial KERN mode $4000 + $05 -> $15"
+			severity error;
+		wait until phi2 = '0';
+
+		-- SAVE current mode (KERN)
+		cpuWrite(MMU_MODE_SAVE, x"00");
+
+		-- Switch to APPL mode
+		cpuWrite(MMU_MODE_APPL, x"00");
+		cpuRead(x"4000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert ma(17 downto 10) = x"1A"
+			report "SAVE/RECALL: After APPL switch $4000 + $0A -> $1A"
+			severity error;
+		wait until phi2 = '0';
+
+		-- RECALL saved mode (should restore KERN)
+		cpuWrite(MMU_MODE_RECALL, x"00");
+		cpuRead(x"4000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert ma(17 downto 10) = x"15"
+			report "SAVE/RECALL: After RECALL $4000 + $05 -> $15 (KERN restored)"
 			severity error;
 		wait until phi2 = '0';
 
@@ -332,7 +397,7 @@ begin
 		-- Done
 		-----------------------------------------------
 		wait for 1 us;
-		assert false report "All tests completed successfully" severity failure;
+		assert false report "All tests executed" severity failure;
 
 	end process;
 

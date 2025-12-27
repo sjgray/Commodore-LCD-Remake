@@ -107,6 +107,7 @@ set_location_assignment PIN_11 -to cs_aciab
 set_global_assignment -name OPTIMIZE_HOLD_TIMING OFF
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING OFF
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name SDC_FILE decoder.sdc
 set_global_assignment -name VHDL_FILE decoder_testbench.vhd
 set_global_assignment -name VHDL_FILE decoder.vhd -hdl_version VHDL_2008
 set_global_assignment -name CDF_FILE ../output_files/Chain5.cdf
