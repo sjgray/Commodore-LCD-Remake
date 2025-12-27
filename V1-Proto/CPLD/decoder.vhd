@@ -52,30 +52,28 @@ architecture rtl of decoder is
 	signal mmu_mode: mmu_mode_t;
 	signal mmu_saved_mode: mmu_mode_t;
 	signal active_offset: std_logic_vector(7 downto 0);
+	signal phys_addr: std_logic_vector(17 downto 10);  -- translated physical address
 	signal is_bottom_4k : std_logic;  -- $0000-$0FFF: system RAM
 	signal is_io_rom : std_logic;     -- $F800-$FFFF: I/O and ROM
 
 begin
 
-	vram <= '1' when a(15 downto 14) = "00" else '0';
-	ram1 <= '1' when a(15 downto 14) = "01" else '0';
-
+	-- I/O chip selects (directly from CPU address, no translation)
 	via1 <= '1' when a(15 downto 4) = x"F80" else '0';
-			  
 	via2 <= '1' when a(15 downto 4) = x"F88" else '0';
-
 	vdc  <= '1' when a(15 downto 7) = "111111111" and a(6 downto 2) = "00000" else '0';  -- $FF80-$FF83
-
 	acia <= '1' when a(15 downto 4) = x"F98" and a(3 downto 2) = "00" else '0';
-	
-	rom <= (not vram) and (not ram1) and (not via1) and 
-			 (not via2) and (not vdc) and (not acia);
 
-	-- vram, ram1, via1, via2, acia, vdc, rom 
-	--   are active-high variables decoded from a0-15 only
-	-- 
+	-- Memory chip selects (from translated physical address)
+	-- Physical memory map:
+	--   $00000-$07FFF: Internal RAM (32K)  - phys_addr(17:15) = "000"
+	--   $08000-$0FFFF: External RAM (32K)  - phys_addr(17:15) = "001"
+	--   $20000-$3FFFF: ROM (128K)          - phys_addr(17) = '1'
+	vram <= '1' when phys_addr(17 downto 15) = "000" and is_io_rom = '0' else '0';
+	ram1 <= '1' when phys_addr(17 downto 15) = "001" and is_io_rom = '0' else '0';
+	rom  <= '1' when phys_addr(17) = '1' and is_io_rom = '0' else '0';
+
 	-- phi2 and rwb are signals direct from the 6502
-	-- 
 	-- all chip select outputs are active-low
 	cs_vramb <= not(phi2 and vram);
 	cs_ram1b <= not(phi2 and ram1);
@@ -122,7 +120,8 @@ begin
 		mmu_appl4_offset;                                   -- $C000-$F7FF
 
 	-- apply offset to memory address
-	ma(17 downto 10) <= std_logic_vector(unsigned("00" & a(15 downto 10)) + unsigned(active_offset));
+	phys_addr <= std_logic_vector(unsigned("00" & a(15 downto 10)) + unsigned(active_offset));
+	ma(17 downto 10) <= phys_addr;
 	ma(19 downto 18) <= "11"; -- unused address lines for larger ROMs
 	 
 	process(phi2, resetb)

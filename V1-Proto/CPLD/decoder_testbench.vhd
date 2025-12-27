@@ -134,29 +134,9 @@ begin
 		initMMU;
 
 		-----------------------------------------------
-		-- Test 1: Chip select decoding
+		-- Test 1: I/O chip select decoding (CPU address based)
 		-----------------------------------------------
-		report "Test 1: Chip select decoding";
-
-		-- VRAM ($0000-$3FFF)
-		cpuRead(x"0000");
-		wait until phi2 = '1';
-		wait for 100 ns;
-		assert cs_vramb = '0' report "VRAM CS should be active at $0000" severity error;
-		wait until phi2 = '0';
-
-		cpuRead(x"3FFF");
-		wait until phi2 = '1';
-		wait for 100 ns;
-		assert cs_vramb = '0' report "VRAM CS should be active at $3FFF" severity error;
-		wait until phi2 = '0';
-
-		-- RAM1 ($4000-$7FFF)
-		cpuRead(x"4000");
-		wait until phi2 = '1';
-		wait for 100 ns;
-		assert cs_ram1b = '0' report "RAM1 CS should be active at $4000" severity error;
-		wait until phi2 = '0';
+		report "Test 1: I/O chip select decoding";
 
 		-- VIA1 ($F800-$F80F)
 		cpuRead(VIA1_BASE);
@@ -173,6 +153,33 @@ begin
 		-- ACIA ($F980-$F983)
 		cpuRead(ACIA_BASE);
 		assert cs_aciab = '0' report "ACIA CS should be active at $F980" severity error;
+
+		-----------------------------------------------
+		-- Test 1b: Memory chip selects (physical address based)
+		-----------------------------------------------
+		report "Test 1b: Memory chip selects in KERNEL mode";
+
+		-- In KERNEL mode with offset 0:
+		-- CPU $0000-$7FFF maps to physical $00000-$07FFF (internal RAM = VRAM)
+		-- CPU $8000-$F7FF maps to physical $38000-$3F7FF (ROM)
+
+		cpuRead(x"0000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert cs_vramb = '0' report "KERN: $0000 -> physical $00000 should select VRAM" severity error;
+		wait until phi2 = '0';
+
+		cpuRead(x"4000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert cs_vramb = '0' report "KERN: $4000 -> physical $04000 should select VRAM" severity error;
+		wait until phi2 = '0';
+
+		cpuRead(x"8000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert cs_rom1b = '0' report "KERN: $8000 -> physical $38000 should select ROM" severity error;
+		wait until phi2 = '0';
 
 		-----------------------------------------------
 		-- Test 2: Kernel mode address translation
@@ -303,10 +310,44 @@ begin
 		wait until phi2 = '0';
 
 		-----------------------------------------------
-		-- Test 6: ROM chip select (read-only)
+		-- Test 6: Mode-dependent chip selects
 		-----------------------------------------------
-		report "Test 6: ROM chip select";
+		report "Test 6: Mode-dependent chip selects";
 
+		-- In KERNEL mode, $8000 should map to ROM (physical $38000)
+		cpuWrite(MMU_MODE_KERN, x"00");
+		cpuRead(x"8000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert cs_rom1b = '0' report "KERN: $8000 should select ROM" severity error;
+		assert cs_vramb = '1' report "KERN: $8000 should NOT select VRAM" severity error;
+		assert cs_ram1b = '1' report "KERN: $8000 should NOT select RAM1" severity error;
+		wait until phi2 = '0';
+
+		-- In RAM mode, $8000 should map to external RAM (physical $08000)
+		cpuWrite(MMU_MODE_RAM, x"00");
+		cpuRead(x"8000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert cs_ram1b = '0' report "RAM: $8000 should select RAM1 (physical $08000)" severity error;
+		assert cs_rom1b = '1' report "RAM: $8000 should NOT select ROM" severity error;
+		assert cs_vramb = '1' report "RAM: $8000 should NOT select VRAM" severity error;
+		wait until phi2 = '0';
+
+		-- In RAM mode, $0000 should map to internal RAM (physical $00000)
+		cpuRead(x"0000");
+		wait until phi2 = '1';
+		wait for 100 ns;
+		assert cs_vramb = '0' report "RAM: $0000 should select VRAM (physical $00000)" severity error;
+		assert cs_ram1b = '1' report "RAM: $0000 should NOT select RAM1" severity error;
+		wait until phi2 = '0';
+
+		-----------------------------------------------
+		-- Test 6b: ROM chip select (read-only)
+		-----------------------------------------------
+		report "Test 6b: ROM chip select read-only behavior";
+
+		cpuWrite(MMU_MODE_KERN, x"00");
 		cpuRead(x"E000");
 		wait until phi2 = '1';
 		wait for 100 ns;
