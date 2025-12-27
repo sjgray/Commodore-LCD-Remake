@@ -44,6 +44,19 @@ architecture rtl of decoder is
 	signal acia : std_logic;
 	signal rom : std_logic;
 
+	-- MMU
+	type mmu_mode_t is (MODE_KERN, MODE_APPL, MODE_RAM);
+	signal mmu_kern_offset: std_logic_vector(7 downto 0);
+	signal mmu_appl4_offset: std_logic_vector(7 downto 0);
+	signal mmu_appl3_offset: std_logic_vector(7 downto 0);
+	signal mmu_appl2_offset: std_logic_vector(7 downto 0);
+	signal mmu_appl1_offset: std_logic_vector(7 downto 0);
+	signal mmu_mode: mmu_mode_t;
+	signal window_select: std_logic_vector(1 downto 0);
+	signal active_offset: std_logic_vector(7 downto 0);
+   signal is_bottom_4k : std_logic;  -- $0000-$0FFF: system RAM
+   signal is_io_rom : std_logic;     -- $F800-$FFFF: I/O and ROM
+
 begin
 
 	vram <= '1' when a(15 downto 14) = "00" else '0';
@@ -74,10 +87,68 @@ begin
 	cs_aciab <= not(acia);
 	cs_rom1b <= not(rwb and rom);
 	
-	ma(15 downto 10) <= a(15 downto 10);
+	--ma(15 downto 10) <= a(15 downto 10);
 	
-	ma(16) <= '1'; -- 27C010
-	ma(17) <= '1'; -- 27C020
-	ma(19 downto 18) <= "11"; -- 27C040 (will never be used)
+	--ma(16) <= '1'; -- 27C010
+	--ma(17) <= '1'; -- 27C020
+	--ma(19 downto 18) <= "11"; -- 27C040 (will never be used)
+
+	
+	----------
+	-- MMU
+	-- determine which window we're in based on address bits 15:14
+	is_bottom_4k <= '1' when a(15 downto 12) = x"0" else '0';
+	is_io_rom <= '1' when a(15 downto 11) = "11111" else '0';  -- $F800-$FFFF
+
+	-- select active offset based on mode and address
+	active_offset <= 
+		-- non-windowed regions: no offset
+		(others => '0') when is_bottom_4k = '1' else
+		(others => '0') when is_io_rom = '1' else
+		  
+		-- RAM mode: bottom 62K direct-mapped, no offset
+		(others => '0') when mmu_mode = MODE_RAM else
+		  
+		-- KERN mode:
+		-- $1000-$3FFF: direct-mapped (offset 0)
+		(others => '0') when mmu_mode = MODE_KERN and a(15 downto 14) = "00" else
+		-- $4000-$7FFF: kernel window (uses kernel offset)
+		mmu_kern_offset when mmu_mode = MODE_KERN and a(15 downto 14) = "01" else
+		-- $8000-$F7FF: maps to top of physical memory (fixed offset $C0)
+		x"C0" when mmu_mode = MODE_KERN else
+		  
+		-- APPL mode (we've already excluded bottom 4K and I/O region above):
+		mmu_appl1_offset when a(15 downto 14) = "00" else  -- $1000-$3FFF
+		mmu_appl2_offset when a(15 downto 14) = "01" else  -- $4000-$7FFF
+		mmu_appl3_offset when a(15 downto 14) = "10" else  -- $8000-$BFFF
+		mmu_appl4_offset;                                   -- $C000-$F7FF
+
+	-- apply offset to memory address
+	ma(17 downto 10) <= std_logic_vector(unsigned("00" & a(15 downto 10)) + unsigned(active_offset));
+	ma(19 downto 18) <= "11"; -- unused address lines for larger ROMs
+	 
+	process(phi2)
+	begin
+		if falling_edge(phi2) then
+			if rwb = '0' then
+				case a(15 downto 7) is  -- 9 bits: page + upper/lower half
+					when x"FF" & '0' => mmu_kern_offset <= d;   -- FF00-FF7F
+					when x"FE" & '1' => mmu_appl3_offset <= d;  -- FE80-FEFF
+					when x"FE" & '0' => mmu_appl2_offset <= d;  -- FE00-FE7F
+					when x"FD" & '1' => mmu_appl1_offset <= d;  -- FD80-FDFF
+					when x"FD" & '0' => null;                   -- FD00-FD7F: TEST MODE
+					when x"FC" & '1' => null;                   -- FC80-FCFF: SAVE/RECALL
+					 
+					-- mode switching (only address matters, data ignored)
+					when x"FB" & '1' => mmu_mode <= MODE_RAM;   -- FB80-FBFF
+					when x"FB" & '0' => mmu_mode <= MODE_APPL;  -- FB00-FB7F
+					when x"FA" & '1' => mmu_mode <= MODE_APPL;  -- FA80-FAFF
+					when x"FA" & '0' => mmu_mode <= MODE_KERN;  -- FA00-FA7F
+						 
+						when others => null;
+				end case;
+			end if;
+		end if;
+	end process;
 
 end architecture rtl;
