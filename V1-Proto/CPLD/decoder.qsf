@@ -44,11 +44,9 @@ set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:04:12  JANUARY 04, 20
 set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR "-1"
-set_global_assignment -name EDA_SIMULATION_TOOL "<None>"
-set_global_assignment -name EDA_OUTPUT_DATA_FORMAT NONE -section_id eda_simulation
-set_global_assignment -name VHDL_FILE decoder.vhd -hdl_version VHDL_2008
+set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim-Altera (VHDL)"
+set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
 set_global_assignment -name MAX7000_DEVICE_IO_STANDARD TTL
-set_global_assignment -name CDF_FILE ../output_files/Chain5.cdf
 set_location_assignment PIN_2 -to phi2
 set_location_assignment PIN_1 -to resetb
 set_location_assignment PIN_83 -to osc
@@ -109,3 +107,6 @@ set_location_assignment PIN_11 -to cs_aciab
 set_global_assignment -name OPTIMIZE_HOLD_TIMING OFF
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING OFF
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name VHDL_FILE decoder_testbench.vhd
+set_global_assignment -name VHDL_FILE decoder.vhd -hdl_version VHDL_2008
+set_global_assignment -name CDF_FILE ../output_files/Chain5.cdf
