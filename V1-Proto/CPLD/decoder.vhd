@@ -145,7 +145,7 @@ begin
 					when x"FA" & '1' => mmu_mode <= MODE_APPL;  -- FA80-FAFF
 					when x"FA" & '0' => mmu_mode <= MODE_KERN;  -- FA00-FA7F
 						 
-						when others => null;
+					when others => null;
 				end case;
 			end if;
 		end if;
