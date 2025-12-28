@@ -1,4 +1,4 @@
-CLCD Case - 3D models in STL format
+CLCD Case - 3D models in Sketchup and STL formats
 
 ## Description			REV	Fill	GRAMS
 ==============			===	====	=====
